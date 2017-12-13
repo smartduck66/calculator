@@ -1,7 +1,7 @@
 //
 // This is example code from Chapter 6.7 "Trying the second version" of
 // "Programming -- Principles and Practice Using C++" by Bjarne Stroustrup
-// 10 décembre 2017
+// Commit initial : 10 décembre 2017 - Commit en cours : 13 décembre 2017
 // Caractères spéciaux : [ ]   '\n'   {  }   ||
 
 // Chemin pour VSCODE
