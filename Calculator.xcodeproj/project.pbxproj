@@ -23,6 +23,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		EB7F35971FD6F6910074D46A /* std_lib_facilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = std_lib_facilities.h; path = ../std_lib_facilities.h; sourceTree = "<group>"; };
 		EBB5531F1FD6F49B00A23AFD /* Calculator */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Calculator; sourceTree = BUILT_PRODUCTS_DIR; };
 		EBB553221FD6F49B00A23AFD /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -41,6 +42,7 @@
 		EBB553161FD6F49B00A23AFD = {
 			isa = PBXGroup;
 			children = (
+				EB7F35971FD6F6910074D46A /* std_lib_facilities.h */,
 				EBB553211FD6F49B00A23AFD /* Calculator */,
 				EBB553201FD6F49B00A23AFD /* Products */,
 			);
@@ -218,6 +220,7 @@
 		EBB553271FD6F49B00A23AFD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -225,6 +228,7 @@
 		EBB553281FD6F49B00A23AFD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -248,6 +252,7 @@
 				EBB553281FD6F49B00A23AFD /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
