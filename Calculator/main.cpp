@@ -1,7 +1,8 @@
 //
 // This is example code from Chapter 6.7 "Trying the second version" of
 // "Programming -- Principles and Practice Using C++" by Bjarne Stroustrup
-// Commit initial : 10 décembre 2017 - Commit en cours : 13 décembre 2017
+// Commit initial : 10 décembre 2017
+// Commit en cours : 14 décembre 2017 - 218.3 : ajout de la fonction factorielle
 // Caractères spéciaux : [ ]   '\n'   {  }   ||
 
 // Chemin pour VSCODE
@@ -59,12 +60,12 @@ Token Token_stream::get()
     }
     
     char ch;
-    cin >> ch;    // note that >> skips whitespace (space, newline, tab, etc.)
+    cin >> ch;    // Saisie de l'expression : un CR stoppe le processus - Note that >> skips whitespace (space, newline, tab, etc.)
     
     switch (ch) {
         case ';':    // for "print"
         case 'q':    // for "quit"
-        case '(': case ')': case '{': case '}': case '+': case '-': case '*': case '/':
+        case '(': case ')': case '{': case '}': case '+': case '-': case '*': case '/': case '!':
             return Token(ch);        // let each character represent itself
         case '.':
         case '0': case '1': case '2': case '3': case '4':
@@ -126,7 +127,7 @@ double primary()
 
 //------------------------------------------------------------------------------
 
-// deal with *, /, and %
+// deal with *, /, !
 double term()
 {
     double left = primary();
@@ -146,6 +147,22 @@ double term()
                 t = ts.get();
                 break;
             }
+            case '!':
+            {
+                // On calcule la factorielle via une boucle simple inverse sur la variable left qui contient l'entier à traiter (ex : 4!)
+                // On ne sait pas le faire sur un réel, donc on convertit en int
+                int factorielle=static_cast<int>(left);
+                int resultat_fact=factorielle;
+                
+                if (factorielle==0)
+                    resultat_fact=1;
+                else
+                    for (int i=factorielle-1;i>=1;i--)resultat_fact *=i;
+                
+                left = resultat_fact;
+                t = ts.get();
+                break;
+            }
             default:
                 ts.putback(t);     // put t back into the token stream
                 return left;
@@ -155,7 +172,7 @@ double term()
 
 //------------------------------------------------------------------------------
 
-// deal with + and -
+// deal with +, -
 double expression()
 {
     double left = term();      // read and evaluate a Term
@@ -163,6 +180,7 @@ double expression()
     
     while(true) {
         switch(t.kind) {
+             
             case '+':
                 left += term();    // evaluate Term and add
                 t = ts.get();
