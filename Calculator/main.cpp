@@ -1,8 +1,8 @@
 //
-// This is example code from Chapter 6.7 "Trying the second version" of
-// "Programming -- Principles and Practice Using C++" by Bjarne Stroustrup
+// Calculatrice : Version modifiée du chapitre 7 de l'ouvrage
+// "Programming -- Principles and Practice Using C++" de Bjarne Stroustrup (2ème édition : 2014)
 // Commit initial : 10 décembre 2017
-// Commit en cours : 1er janvier 2018 - Version modifiée du chapitre 7 - Avant exo 7 du Drill page 251
+// Commit en cours : 2 janvier 2018 - Exo 7 à 11 du Drills page 251/252 : rajout fonction sqrt() et pow()
 // Caractères spéciaux : [ ]   '\n'   {  }   ||
 
 // Chemin pour VSCODE
@@ -14,19 +14,24 @@
 // Définition de constantes symboliques pour clarifier le code
 const char number='8';      // "a value" dans la classe Token
 const char quit='q';        // Quitter
+const string declexit="exit"; // Exit Keyword, identique dans son comportement à "Quitter"
 const char print=';';       // "Imprimer" le résultat
 const string prompt="> ";   // Demande d'une saisie
 const string result="= ";   // Indique que ce qui suit est un résultat
 const char name='a';        // name token
-const char let='L';         // declaration token
-const string declkey="let"; // declaration keyword
-
+const char let='L';         // declaration var token
+const string declkey="let"; // declaration var keyword
+const char racine='R';         // racine carrée token
+const string sqrtkey="sqrt"; // racine carrée keyword
+const char puissance='P';         // puissance token
+const string puissancekey="pow"; // puissance keyword
 
 class Variable {            // Cette classe sert de socle à la gestion des variables dans la calculette (ex : let x=2;)
 public:
     string name;
     double value;
     
+    // Constructeur
     Variable(string n, double v) :name(n), value(v) { }
     
 };
@@ -45,7 +50,7 @@ double get_value(string s){
     return 1;
 }
 
-// The set_value() member function sets the Variable named s to d
+// The set_value() member function sets the Variable named s to d - NON UTILISEE POUR LE MOMENT
 double set_value(string s, double d){
     for (Variable& v:var_table)
         if (v.name==s){
@@ -55,6 +60,7 @@ double set_value(string s, double d){
     error("set: undefined variable ",s);
     return 1;
 }
+
 
 
 //----------------------------------------------------------------------------------
@@ -107,7 +113,6 @@ void Token_stream::ignore(char c)   // c represents the kind of Token
     if (full&&c==buffer.kind){
         full=false;
         return;
-    
     }
     full=false;
     
@@ -142,6 +147,7 @@ Token Token_stream::get()
         case '/':
         case '!':
         case '%':
+        case ',':                    // Traitement des paramètres de pow()
         case '=':
             return Token(ch);        // let each character represent itself
         case '.':
@@ -159,10 +165,18 @@ Token Token_stream::get()
                 s+=ch;
                 while (cin.get(ch)&&(isalpha(ch)||isdigit(ch)))s+=ch;
                 cin.putback(ch);
-                if (s==declkey)
-                    return Token{let}; //declaration keyword
-                return Token{name,s};
                 
+                if (s==declkey)
+                    return Token{let};    //declaration var keyword
+                else if (s==sqrtkey)
+                    return Token{racine}; //racine carrée keyword
+                else if (s==puissancekey)
+                    return Token{puissance}; //puissance keyword
+                else if (s==declexit)
+                    return Token{quit};   // Même comportement que le "case quit" plus haut
+                
+                return Token{name,s};
+               
             }
             
             error("Bad token !!");
@@ -177,9 +191,8 @@ Token Token_stream::get()
 Token_stream ts;        // Instanciation de la classe Token_stream : provides get() and putback()
 
 //------------------------------------------------------------------------------
-
 double expression();    // declaration so that primary() can call expression()
-
+double term();          // declaration so that primary() can call term()
 //------------------------------------------------------------------------------
 
 // deal with numbers, parentheses et accolades
@@ -215,6 +228,19 @@ double primary()
         case name:
             return get_value(t.name);
         
+        case racine:        // Traitement de la racine carrée
+        {
+            double d = expression();    // On attend une expression (ex : 4 ou 4-2)
+            if (d<0) error("Une racine carrée ne peut s'appliquer sur un nombre négatif !");
+            return sqrt(d);
+        }
+        
+        case puissance:        // Traitement de la puissance
+        {
+            double d = term(); // On attend deux paramètres (ex : 2,3 correspond à 2^3 ; 2,-1 correspond à 2^-1)
+            return d;
+        }
+            
         default:
             error("primary expected");
             return 1;
@@ -223,7 +249,7 @@ double primary()
 
 //------------------------------------------------------------------------------
 
-// deal with *, /, !, %
+// deal with *, /, !, %, "," pour pow()
 double term()
 {
     double left = primary();
@@ -250,6 +276,14 @@ double term()
                 double d=primary();
                 if (d==0) error ("%: divide by zero");
                 left=fmod(left,d); // Appel de la librairie "float modulo" de la librairie cmath
+                t = ts.get();
+                break;
+            }
+            
+            case ',':
+            {
+                double d=primary();
+                left=pow(left,d); // Appel de la librairie "puissance" de la librairie cmath (puissances négatives acceptées)
                 t = ts.get();
                 break;
             }
@@ -330,7 +364,7 @@ double define_name(string var,double val)   // add (var,val) to var_table
 
 
 //------------------------------------------------------------------------------
-double declaration()
+double declaration()        // Déclaration d'une variable (ex : let x=2;)
 // assume we have seen "let"
 // handle : name = expression
 // declare a variable called "name" with the initial value "expression"
@@ -355,6 +389,7 @@ double statement()    // handle expressions and declarations
     switch (t.kind){
         case let:
             return declaration();
+            
         default:
             ts.putback(t);
             return expression();
@@ -397,7 +432,7 @@ try
     
     cout << "Saisis une expression :\n";
     calculate();
-    keep_window_open();
+    // keep_window_open(); Uniquement pour Windows
     return 0;
     
 }
