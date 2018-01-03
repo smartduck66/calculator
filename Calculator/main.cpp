@@ -2,7 +2,7 @@
 // Calculatrice : Version modifiée du chapitre 7 de l'ouvrage
 // "Programming -- Principles and Practice Using C++" de Bjarne Stroustrup (2ème édition : 2014)
 // Commit initial : 10 décembre 2017
-// Commit en cours : 2 janvier 2018 - Exo 7 à 11 du Drills page 251/252 : rajout fonction sqrt() et pow()
+// Commit en cours : 3 janvier 2018 - Exos page 253
 // Caractères spéciaux : [ ]   '\n'   {  }   ||
 
 // Chemin pour VSCODE
@@ -12,27 +12,33 @@
 #include "std_lib_facilities.h"
 
 // Définition de constantes symboliques pour clarifier le code
-const char number='8';      // "a value" dans la classe Token
-const char quit='q';        // Quitter
-const string declexit="exit"; // Exit Keyword, identique dans son comportement à "Quitter"
-const char print=';';       // "Imprimer" le résultat
-const string prompt="> ";   // Demande d'une saisie
-const string result="= ";   // Indique que ce qui suit est un résultat
-const char name='a';        // name token
-const char let='L';         // declaration var token
-const string declkey="let"; // declaration var keyword
-const char racine='R';         // racine carrée token
-const string sqrtkey="sqrt"; // racine carrée keyword
-const char puissance='P';         // puissance token
-const string puissancekey="pow"; // puissance keyword
+// -----------------------------------------------------------
+const char number='8';                  // "a value" dans la classe Token
+const char quit='q';                    // Quitter
+const string declexit="exit";           // Exit Keyword, identique dans son comportement à "Quitter"
+const char print=';';                   // "Imprimer" le résultat
+const string prompt="> ";               // Demande d'une saisie
+const string result="= ";               // Indique que ce qui suit est un résultat
+const char name='a';                    // name token
+const char let='L';                     // déclaration/initialisation d'une variable : token
+const string declkey="let";             // déclaration/initialisation d'une variable : keyword
+const char const_let='C';               // déclaration/initialisation d'une constante : token
+const string const_letkey="const_let";  // déclaration/initialisation d'une constante : keyword
+const char assign='S';                  // assignation var token (modification de la valeur d'une variable déjà créée par let)
+const string assignkey="set";           // assignation var keyword
+const char racine='R';                  // racine carrée token
+const string sqrtkey="sqrt";            // racine carrée keyword
+const char puissance='P';               // puissance token
+const string puissancekey="pow";        // puissance keyword
 
-class Variable {            // Cette classe sert de socle à la gestion des variables dans la calculette (ex : let x=2;)
+class Variable {            // Cette classe sert de socle à la gestion des variables & constantes dans la calculette (ex : let x=2; ou set x=4;)
 public:
     string name;
     double value;
+    bool constante;         // True : cette variable est une constante et ne peut être modifiée par une assignation ultérieure
     
     // Constructeur
-    Variable(string n, double v) :name(n), value(v) { }
+    Variable(string n, double v, bool c) :name(n), value(v), constante(c) { }
     
 };
 
@@ -46,14 +52,18 @@ vector<Variable>var_table;
 double get_value(string s){
     for (const Variable& v:var_table)
         if (v.name==s) return v.value;
+    
     error("get: undefined variable ",s);
     return 1;
 }
 
-// The set_value() member function sets the Variable named s to d - NON UTILISEE POUR LE MOMENT
+// The set_value() member function sets the Variable named s to d
 double set_value(string s, double d){
     for (Variable& v:var_table)
         if (v.name==s){
+            if (v.constante)error("set: cette variable est une constante et ne peut être modifiée : ",s);
+            
+            // Sinon, on peut la modifier
             v.value=d;
             return 0;
         }
@@ -154,26 +164,30 @@ Token Token_stream::get()
         case '0': case '1': case '2': case '3': case '4':
         case '5': case '6': case '7': case '8': case '9':
         {
-            cin.putback(ch);         // put digit back into the input stream
+            cin.putback(ch);            // put digit back into the input stream
             double val;
-            cin >> val;              // read a floating-point number
+            cin >> val;                 // read a floating-point number
             return Token{number,val};   // La constante number définie est utilisée
         }
         default:
-            if (isalpha(ch)){
+            if (isalpha(ch)||ch=='_'){
                 string s;
                 s+=ch;
-                while (cin.get(ch)&&(isalpha(ch)||isdigit(ch)))s+=ch;
+                while (cin.get(ch)&&(isalpha(ch)||isdigit(ch)||ch=='_'))s+=ch;  // On gère également le "_" dans les noms de variables (pré ou suffixe)
                 cin.putback(ch);
                 
                 if (s==declkey)
-                    return Token{let};    //declaration var keyword
+                    return Token{let};          //déclaration initiale d'une variable
+                if (s==const_letkey)
+                    return Token{const_let};    //déclaration initiale d'une constante
+                if (s==assignkey)
+                    return Token{assign};       //assignation d'une variable (=modification) après sa déclaration initiale par un let
                 else if (s==sqrtkey)
-                    return Token{racine}; //racine carrée keyword
+                    return Token{racine};       //racine carrée keyword
                 else if (s==puissancekey)
-                    return Token{puissance}; //puissance keyword
+                    return Token{puissance};    //puissance keyword
                 else if (s==declexit)
-                    return Token{quit};   // Même comportement que le "case quit" plus haut
+                    return Token{quit};         //Même comportement que le "case quit" plus haut
                 
                 return Token{name,s};
                
@@ -354,17 +368,22 @@ bool is_declared(string var)   // is var already in var_table ?
 }
 
 //------------------------------------------------------------------------------
-double define_name(string var,double val)   // add (var,val) to var_table
+double define_name(string var,double val, bool isConstante)   // add (var,val, constante) to var_table
 {
     if (is_declared(var)) error(var," declared twice");
-    var_table.push_back(Variable{var,val});
+    
+    if (isConstante)
+        var_table.push_back(Variable{var,val, true});   // On initialise une constante
+    else
+        var_table.push_back(Variable{var,val, false});  // On initialise une variable modifiable par un éventuel set
+    
     return val;
     
 }
 
 
 //------------------------------------------------------------------------------
-double declaration()        // Déclaration d'une variable (ex : let x=2;)
+double declaration(bool isConstante)        // Déclaration d'une variable (ex : let x=2;)
 // assume we have seen "let"
 // handle : name = expression
 // declare a variable called "name" with the initial value "expression"
@@ -377,7 +396,27 @@ double declaration()        // Déclaration d'une variable (ex : let x=2;)
     if (t2.kind!='=') error("= missing in declaration of ",var_name);
     
     double d=expression();
-    define_name(var_name,d);
+    define_name(var_name,d, isConstante);
+    return d;
+    
+}
+
+//------------------------------------------------------------------------------
+double assignation()        // Assignation/modification d'une variable (ex : set x=2;)
+// assume we have seen "set"
+// handle : name = expression
+// update a variable called "name" with the initial value "expression"
+{
+    Token t=ts.get();
+    if (t.kind!=name) error("name expected in assignation");
+    string var_name=t.name;
+    
+    Token t2=ts.get();
+    if (t2.kind!='=') error("= missing in assignation of ",var_name);
+    
+    double d=expression();
+    set_value(var_name,d);  // L'appel à "set_value" est fait directement sans créer un "define_name" qui vérifie la présence de la variable :
+                            // en effet, ce test est déjà fait dans la fonction set_value
     return d;
     
 }
@@ -387,8 +426,14 @@ double statement()    // handle expressions and declarations
 {
     Token t=ts.get();
     switch (t.kind){
-        case let:
-            return declaration();
+        case let:                   // Déclaration d'une variable normale
+            return declaration(false);
+        
+        case const_let:             // Déclaration d'une constante non modifiable
+            return declaration(true);
+        
+        case assign:                // Assignation/Modification d'une variable déjà créée
+            return assignation();
             
         default:
             ts.putback(t);
@@ -426,11 +471,16 @@ int main()
 try
 {
     //predefined names:
-    define_name("pi",3.1415926535);
-    define_name("e",2.7182818284);
-    define_name("k",1000);
+    define_name("pi",3.1415926535, true);
+    define_name("e",2.7182818284, true);
+    define_name("k",1000, true);
     
-    cout << "Saisis une expression :\n";
+    cout << "Saisis une expression suivie d'un ; (q ou exit pour quitter) :\n";
+    cout << "- opérations courantes : *, -, /, +, %\n";
+    cout << "- let, set, const_let pour les variables/constantes\n";
+    cout << "- factorielle : !  puissance : pow(x,y)  racine carrée : sqrt(x)\n";
+    cout << "----------------------------------------------------------------\n";
+    
     calculate();
     // keep_window_open(); Uniquement pour Windows
     return 0;
