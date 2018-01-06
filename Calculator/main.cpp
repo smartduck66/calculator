@@ -2,7 +2,7 @@
 // Calculatrice : Version modifiée du chapitre 7 de l'ouvrage
 // "Programming -- Principles and Practice Using C++" de Bjarne Stroustrup (2ème édition : 2014)
 // Commit initial : 10 décembre 2017
-// Commit en cours : 3 janvier 2018 - Exos page 253
+// Commit en cours : 6 janvier 2018 - Exos page 253
 // Caractères spéciaux : [ ]   '\n'   {  }   ||   ~
 
 // Chemin pour VSCODE
@@ -93,6 +93,8 @@ void Symbol_table::effacer(){   // On efface toutes les valeurs du tableau de va
 
 // The get_value() member function returns the value of the Variable named s
 double Symbol_table::get_value(string s){
+
+    // Tip : const Variable& v signifie que l'on passe un vecteur par référence (sans le copier) ; const empêche toute modification accidentelle de ce vecteur
     for (const Variable& v:var_table)
         if (v.name==s) return v.value;
     
