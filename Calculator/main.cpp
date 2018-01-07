@@ -2,7 +2,7 @@
 // Calculatrice : Version modifiée du chapitre 7 de l'ouvrage
 // "Programming -- Principles and Practice Using C++" de Bjarne Stroustrup (2ème édition : 2014)
 // Commit initial : 10 décembre 2017
-// Commit en cours : 6 janvier 2018 - Exos page 253
+// Commit en cours : 6 janvier 2018 - Modifications liées au chapitre 8 - Exo n°1
 // Caractères spéciaux : [ ]   '\n'   {  }   ||   ~
 
 // Chemin pour VSCODE
@@ -171,7 +171,9 @@ public:
 
 class Token_stream {
 public:
-    Token_stream();             // make a Token_stream that reads from cin
+    istream& channel_input;     // On définit le canal de saisie des informations
+                                // istream est une classe de la librairie standard
+    Token_stream();             // make a Token_stream that reads from channel_input (anciennement cin directement)
     Token get();                // get a Token (get() is defined elsewhere)
     void putback(Token t);      // put a Token back
     void ignore(char c);        // discard characters up to and including a char
@@ -180,10 +182,14 @@ private:
     Token buffer;     // here is where we keep a Token put back using putback()
 };
 
-// The constructor just sets "full" to indicate that the buffer is empty:
-Token_stream::Token_stream():full(false), buffer(0)    // no Token in buffer
+// The constructor just sets "full" to indicate that the buffer is empty and defines "cin" as the input channel
+Token_stream::Token_stream():channel_input(cin),full(false), buffer(0)    // no Token in buffer
 {
 }
+
+//-----------------------------------------------------------------------------------------------
+
+Token_stream ts;        // Instanciation de la classe Token_stream : provides get() and putback()
 
 // ------------------------------------------------------------------------------------
 // Définition des 3 fonctions-membre de la classe Token_stream
@@ -208,7 +214,7 @@ void Token_stream::ignore(char c)   // c represents the kind of Token
     
     // now search input
     char ch=0;
-    while (cin>>ch)
+    while (channel_input>>ch)       // anciennement cin était indiqué ici
         if (ch==c)return;
 }
 
@@ -222,7 +228,8 @@ Token Token_stream::get()
     }
     
     char ch;
-    cin >> ch;    // Saisie de l'expression : un CR stoppe le processus - Note that >> skips whitespace (space, newline, tab, etc.)
+    channel_input >> ch;    // Saisie de l'expression : un CR stoppe le processus - Note that >> skips whitespace (space, newline, tab, etc.)
+                            // anciennement cin était indiqué ici
     
     switch (ch) {
         case print:
@@ -244,17 +251,18 @@ Token Token_stream::get()
         case '0': case '1': case '2': case '3': case '4':
         case '5': case '6': case '7': case '8': case '9':
         {
-            cin.putback(ch);            // put digit back into the input stream
+            channel_input.putback(ch);              // put digit back into the input stream
+                                                    // anciennement cin était indiqué ici
             double val;
-            cin >> val;                 // read a floating-point number
+            channel_input >> val;                   // read a floating-point number
             return Token{number,val};   // La constante number définie est utilisée
         }
         default:
             if (isalpha(ch)||ch=='_'){
                 string s;
                 s+=ch;
-                while (cin.get(ch)&&(isalpha(ch)||isdigit(ch)||ch=='_'))s+=ch;  // On gère également le "_" dans les noms de variables (pré ou suffixe)
-                cin.putback(ch);
+                while (channel_input.get(ch)&&(isalpha(ch)||isdigit(ch)||ch=='_'))s+=ch;    // On gère également le "_" dans les noms de variables (pré ou suffixe)
+                channel_input.putback(ch);                                                  // anciennement cin était indiqué ici
                 
                 if (s==declkey)
                     return Token{let};          //déclaration initiale d'une variable
@@ -289,23 +297,21 @@ Token Token_stream::get()
 
 
 
-//------------------------------------------------------------------------------
 
-Token_stream ts;        // Instanciation de la classe Token_stream : provides get() and putback()
-
-//------------------------------------------------------------------------------
-double expression();    // declaration so that primary() can call expression()
-double term();          // declaration so that primary() can call term()
-//------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------
+// Tip : on passe ts par référence pour éviter de l'avoir en variable globale (chapitre 7)
+double expression(Token_stream& ts);    // declaration so that primary() can call expression()
+double term(Token_stream& ts);          // declaration so that primary() can call term()
+//-----------------------------------------------------------------------------------------------
 
 // deal with numbers, parentheses et accolades
-double primary()
+double primary(Token_stream& ts)
 {
     Token t = ts.get();
     switch (t.kind) {
         case '(':    // handle '(' expression ')'
         {
-            double d = expression();
+            double d = expression(ts);
             t = ts.get();
             if (t.kind != ')') error("')' expected");
             return d;
@@ -313,17 +319,17 @@ double primary()
         
         case '{':    // handle '{' expression '}'
         {
-            double d = expression();
+            double d = expression(ts);
             t = ts.get();
             if (t.kind != '}') error("'}' expected");
             return d;
         }
         
         case '-':            // Rajout de la gestion des nombres négatifs...
-            return -primary();
+            return -primary(ts);
             
         case '+':            // ... et du "+" éventuellement rajouté devant le 1er nombre saisi
-            return primary();
+            return primary(ts);
             
         case number:            // we use '8' to represent a number
             return t.value;     // return the number's value
@@ -333,14 +339,14 @@ double primary()
         
         case racine:        // Traitement de la racine carrée
         {
-            double d = term();  // On attend une expression (ex : 4 ou 4-2)
+            double d = term(ts);  // On attend une expression (ex : 4 ou 4-2)
             if (d<0) error("Une racine carrée ne peut s'appliquer sur un nombre négatif !");
             return sqrt(d);
         }
         
         case puissance:        // Traitement de la puissance
         {
-            double d = term(); // On attend deux paramètres (ex : 2,3 correspond à 2^3 ; 2,-1 correspond à 2^-1)
+            double d = term(ts); // On attend deux paramètres (ex : 2,3 correspond à 2^3 ; 2,-1 correspond à 2^-1)
             return d;
         }
             
@@ -353,21 +359,21 @@ double primary()
 //------------------------------------------------------------------------------
 
 // deal with *, /, !, %, "," pour pow()
-double term()
+double term(Token_stream& ts)
 {
-    double left = primary();
+    double left = primary(ts);
     Token t = ts.get();        // get the next token from token stream
     
     while(true) {
         switch (t.kind) {
             case '*':
-                left *= primary();
+                left *= primary(ts);
                 t = ts.get();
                 break;
             
             case '/':
             {
-                double d = primary();
+                double d = primary(ts);
                 if (d == 0) error("divide by zero");
                 left /= d;
                 t = ts.get();
@@ -376,7 +382,7 @@ double term()
             
             case '%':
             {
-                double d=primary();
+                double d=primary(ts);
                 if (d==0) error ("%: divide by zero");
                 left=fmod(left,d); // Appel de la librairie "float modulo" de la librairie cmath
                 t = ts.get();
@@ -385,7 +391,7 @@ double term()
             
             case ',':
             {
-                double d=primary();
+                double d=primary(ts);
                 left=pow(left,d); // Appel de la librairie "puissance" de la librairie cmath (puissances négatives acceptées)
                 t = ts.get();
                 break;
@@ -418,20 +424,20 @@ double term()
 //------------------------------------------------------------------------------
 
 // deal with +, -
-double expression()
+double expression(Token_stream& ts)
 {
-    double left = term();      // read and evaluate a Term
+    double left = term(ts);      // read and evaluate a Term
     Token t = ts.get();        // get the next token from token stream
     
     while(true) {
         switch(t.kind) {
              
             case '+':
-                left += term();    // evaluate Term and add
+                left += term(ts);    // evaluate Term and add
                 t = ts.get();
                 break;
             case '-':
-                left -= term();    // evaluate Term and subtract
+                left -= term(ts);    // evaluate Term and subtract
                 t = ts.get();
                 break;
             default:
@@ -461,14 +467,14 @@ double declaration(bool isConstante)        // Déclaration d'une variable (ex :
     Token t2=ts.get();
     if (t2.kind!='=') error("= missing in declaration of ",var_name);
     
-    double d=expression();
+    double d=expression(ts);
     sym.define_name(var_name,d, isConstante);
     return d;
     
 }
 
 //------------------------------------------------------------------------------
-double assignation()        // Assignation/modification d'une variable (ex : set x=2;)
+double assignation(Token_stream& ts)        // Assignation/modification d'une variable (ex : set x=2;)
 // assume we have seen "set"
 // handle : name = expression
 // update a variable called "name" with the initial value "expression"
@@ -480,7 +486,7 @@ double assignation()        // Assignation/modification d'une variable (ex : set
     Token t2=ts.get();
     if (t2.kind!='=') error("= missing in assignation of ",var_name);
     
-    double d=expression();
+    double d=expression(ts);
     sym.set_value(var_name,d);  // L'appel à "set_value" est fait directement sans créer un "define_name" qui vérifie la présence de la variable :
                             // en effet, ce test est déjà fait dans la fonction set_value
     return d;
@@ -488,7 +494,7 @@ double assignation()        // Assignation/modification d'une variable (ex : set
 }
 
 //------------------------------------------------------------------------------
-double statement()    // handle expressions and declarations
+double statement(Token_stream& ts)    // handle expressions and declarations
 {
     Token t=ts.get();
     switch (t.kind){
@@ -499,7 +505,7 @@ double statement()    // handle expressions and declarations
             return declaration(true);
         
         case assign:                // Assignation/Modification d'une variable déjà créée
-            return assignation();
+            return assignation(ts);
             
         case list_var:              // Impression de la liste des variables
             sym.print_value();
@@ -523,28 +529,28 @@ double statement()    // handle expressions and declarations
             
         default:
             ts.putback(t);
-            return expression();
+            return expression(ts);
     }
 }
 
 //------------------------------------------------------------------------------
-void calculate()    // expression evaluation loop
+void calculate(Token_stream& ts)    // expression evaluation loop
 {
-    while (cin) {
+    while (ts.channel_input) {      // anciennement cin était indiqué ici
     try {
         cout <<prompt;
         Token t = ts.get();
         while(t.kind==print)t=ts.get();    // eat ';'
         if (t.kind == quit)return;
         ts.putback(t);
-        cout << result << statement() << '\n';
+        cout << result << statement(ts) << '\n';
         
     }
     catch (exception& e) {
         cerr << "error: " << e.what() << '\n';
         clean_up_mess();
         }
-    }
+  }
 }
     
 //------------------------------------------------------------------------------
@@ -558,7 +564,7 @@ try
 
     cout << "Saisis une expression suivie d'un ; (q ou exit pour quitter, help pour l'aide) :\n";
     
-    calculate();
+    calculate(ts);
     // keep_window_open(); Uniquement pour Windows
     return 0;
     
